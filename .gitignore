@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Pycharm
+.idea
+
+# Credentials from user
+splus-ifusci/credentials.py
+splus-ifusci/test/credentials.py
