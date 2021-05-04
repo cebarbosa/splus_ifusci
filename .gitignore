@@ -132,5 +132,4 @@ dmypy.json
 .idea
 
 # Credentials from user
-splus-ifusci/credentials.py
 splus-ifusci/test/credentials.py
