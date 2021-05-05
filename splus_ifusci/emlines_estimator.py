@@ -79,11 +79,16 @@ class EmLine3Filters:
             betax.append(val)
         return u.Quantity(betax)
 
-    def flux_3F(self, flux):
+    def __call__(self, flux, fluxerr=None):
         """Three filter method from VR+2015 (equation (3)). """
         numen = (flux[0] - flux[2]) - self.a * (flux[1] - flux[2])
         denom = + self.betax[0] - self.a * self.betax[1]
-        return numen / denom
+        f = numen / denom
+        if fluxerr is None:
+            return f
+        ferr = np.sqrt(fluxerr[0]**2 + (self.a * fluxerr[1])**2 +
+                       (fluxerr[2] * (self.a -1))**2) / denom
+        return f, ferr
 
     def EW(self, mag):
         """ Calculates the equivalent width using equation (13) of VR+2015. """

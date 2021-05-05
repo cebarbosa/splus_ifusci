@@ -12,12 +12,16 @@ from astropy.coordinates import SkyCoord
 from astropy.table import Table, vstack
 from scipy.interpolate import RectBivariateSpline
 
+from .emlines_estimator import SPLUSEmLine
+from .make_RGB_images import make_RGB_with_overlay
+
 warnings.simplefilter('ignore', category=AstropyWarning)
 np.seterr(divide='ignore', invalid='ignore')
 
 class SCubeMaker():
     def __init__(self, obj, coords, size, conn=None, wdir=None, zpref=None,
-                 redo=False, bands=None, verbose=True, coord_unit=None):
+                 redo=False, bands=None, verbose=True, coord_unit=None,
+                 cut_dir=None):
         """ Produces S-PLUS data cubes directly from the project's database.
 
         Prameters
@@ -45,6 +49,8 @@ class SCubeMaker():
             'F861', and 'Z'. Defalt is all bands.
         coord_unit: astropy.unit
             Units to be used in coordinates. Default is degree
+        cut_dir: str
+            Path to location where cutouts are stored.
         """
         self.obj = obj
         self.coord_unit = u.degree if coord_unit is None else coord_unit
@@ -92,16 +98,17 @@ class SCubeMaker():
         self.zpcorr = self.get_zp_correction()
         # Setting directory for stamps
         self.wdir = os.getcwd() if wdir is None else wdir
-        self.cutouts_dir = os.path.join(self.wdir, "cutouts")
+        self.cutouts_dir = os.path.join(self.wdir, "cutouts") \
+                            if cut_dir is None else cut_dir
         if not os.path.exists(self.cutouts_dir):
             os.mkdir(self.cutouts_dir)
         # Producing stamps and cube
-        s = int(self.size)
-        self.cutnames = [f"{self.obj}_{band}_{s}x{s}{self.size_unit}.fz" for
+        self._s = int(self.size)
+        self.cutnames = [f"{self.obj}_{band}_{self._s}x{self._s}{self.size_unit}.fz" for
                          band in self.bands]
         self.wcutnames= [cut.replace(".fz", "_weight.fz") for cut in
                          self.cutnames]
-        self.cubename = os.path.join(self.wdir, f"{self.obj}_{s}x{s}"
+        self.cubename = os.path.join(self.wdir, f"{self.obj}_{self._s}x{self._s}"
                                                 f"{self.size_unit}.fits")
         status = self.check_infoot()
         if os.path.exists(self.cubename) and not redo:
@@ -246,27 +253,81 @@ class SCubeMaker():
         hdulist.writeto(self.cubename, overwrite=True)
 
     def get_flam(self):
+        if not os.path.exists(self.cubename):
+            return None
         return fits.getdata(self.cubename, ext=1) * self.flam_unit
 
     def get_flamerr(self):
+        if not os.path.exists(self.cubename):
+            return None
         return fits.getdata(self.cubename, ext=2) * self.flam_unit
 
     def get_fnu(self):
+        if not os.path.exists(self.cubename):
+            return None
         flam = self.get_flam()
         fnu = (flam / const.c * self.wave**2).to(self.fnu_unit)
         return fnu
 
     def get_fnuerr(self):
+        if not os.path.exists(self.cubename):
+            return None
         flamerr = self.get_flamerr()
         fnuerr = (flamerr / const.c * self.wave**2).to(self.fnu_unit)
         return fnuerr
 
     def get_mag(self):
+        if not os.path.exists(self.cubename):
+            return None
         fnu = self.get_fnu().value
         mab = -2.5 * np.log10(fnu) - 48.6
+        return mab
 
     def get_magerr(self):
+        if not os.path.exists(self.cubename):
+            return None
         fnu = self.get_fnu().value
         fnuerr = self.get_fnuerr().value
         maberr = np.abs(2.5 / np.log(10) * fnuerr / fnu)
         return maberr
+
+    def calc_halpha(self, output=None, store=True):
+        """ Returns the HAlpha """
+        if not os.path.exists(self.cubename):
+            return None
+        flam = self.get_flam().value
+        flamerr = self.get_flamerr().value
+        # Calculating H-alpha
+        wline = 6562.8 * u.AA
+        bands = ["R", "F660", "I"]
+        condition = [b in self.bands for b in bands]
+        if not all(condition):
+            print("Halpha estimation requires filters R, F660 and I!")
+            return
+        halpha_estimator = SPLUSEmLine(wline, bands)
+        idx = np.array([self.bands.index(band) for band in self.bands])
+        halpha, halpha_err = halpha_estimator(flam[idx], flamerr[idx])
+        default_out = self.cubename.replace(".fits", "_halpha.fits")
+        output = default_out if output is None else output
+        if store:
+            # Saving fits
+            h = fits.getheader(os.path.join(self.cutouts_dir, self.cutnames[0]),
+                                            ext=1)
+            h["EXTNAME"] = "DATA"
+            hdu1 = fits.ImageHDU(halpha.value, h)
+            h["EXTNAME"] = "ERROR"
+            hdu2 = fits.ImageHDU(halpha_err.value, h)
+            hdulist = fits.HDUList([fits.PrimaryHDU(), hdu1, hdu2])
+            hdulist.writeto(output, overwrite=True)
+        return halpha, halpha_err
+
+    def make_RGB_with_halpha(self, outimg=None):
+        if not os.path.exists(self.cubename):
+            return None
+        oname = f"{self.obj}_{self._s}x{self._s}{self.size_unit}_RGB+halpha.png"
+        outimg = os.path.join(self.wdir, oname) if outimg is None else outimg
+        flam = self.get_flam().value
+        halpha = self.calc_halpha(store=False)[0].value
+        rgb_bands = ["I", "R", "G"]
+        rgb = [flam[self.bands.index(b)] for b in rgb_bands]
+        make_RGB_with_overlay(*rgb, outimg, overlay=halpha)

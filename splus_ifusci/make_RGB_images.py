@@ -6,8 +6,7 @@ from astropy.stats import sigma_clipped_stats
 from PIL import Image
 import cv2
 
-def make_RGB_with_overlay(r, g, b, output, overlay=None, bb=10,
-                          nsigma_overlay=0):
+def make_RGB_with_overlay(r, g, b, output, overlay=None, bb=5):
     """ Tool to produce RGB images with overlay.
 
     Parameters
@@ -21,9 +20,6 @@ def make_RGB_with_overlay(r, g, b, output, overlay=None, bb=10,
         Image to be overlay over RGB image.
     bb: float
         Smoothness parameter.
-    nsigma_overlay: float
-        Number of sigmas above the mean to be clipped in overlay image.
-
     """
     r[~np.isfinite(r)] = 0.
     g[~np.isfinite(g)] = 0.
@@ -45,10 +41,13 @@ def make_RGB_with_overlay(r, g, b, output, overlay=None, bb=10,
         return
     mean, median, stddev = sigma_clipped_stats(overlay)
     maxha = np.percentile(overlay, 99.5)
-    overlay = np.clip(overlay,  nsigma_overlay * stddev, maxha)
+    overlay = np.clip(overlay, stddev, maxha)
+    import matplotlib.pyplot as plt
+    plt.imshow(overlay)
+    plt.show()
     overlay -= overlay.min()
     overlay = (overlay / overlay.max() * 255).astype("uint8")
     hamask = np.zeros_like(RGB)
     hamask[:, :, 0] = np.rot90(overlay, 3).T
     out = Image.fromarray(cv2.addWeighted(RGB, 0.9, hamask, 0.4, 0))
-    out = Image.fromarray(RGB)
+    out.save(output)
