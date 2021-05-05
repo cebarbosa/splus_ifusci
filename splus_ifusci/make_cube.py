@@ -244,4 +244,3 @@ class SCubeMaker():
         thdu.header["EXTNAME"] = "METADATA"
         hdulist = fits.HDUList(hdus)
         hdulist.writeto(self.cubename, overwrite=True)
-
