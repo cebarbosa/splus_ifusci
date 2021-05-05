@@ -82,7 +82,7 @@ class SCubeMaker():
                          "F861": 8611.0, "G": 4751.0, "I": 7690.0, "R": 6258.0,
                          "U": 3536.0, "Z": 8831.0}
         self.wave = np.array([self.wave_eff[band] for band in
-                              self.bands]) *u.Angstrom
+                              self.bands]) * u.Angstrom
         self.flam_unit = u.erg / u.cm / u.cm / u.s / u.AA
         self.fnu_unit = u.erg / u.s / u.cm / u.cm / u.Hz
         # Setting zero point calibration configurations
@@ -119,7 +119,7 @@ class SCubeMaker():
         ra = self.coords.ra.to(u.degree).value
         dec = self.coords.dec.to(u.degree).value
         try:
-            hdu = self.conn.get_cut(ra, dec, self.cutsize, self.bands[0])
+            self.conn.get_cut(ra, dec, self.cutsize, self.bands[0])
             return 1
         except:
             return 0
@@ -244,3 +244,29 @@ class SCubeMaker():
         thdu.header["EXTNAME"] = "METADATA"
         hdulist = fits.HDUList(hdus)
         hdulist.writeto(self.cubename, overwrite=True)
+
+    def get_flam(self):
+        return fits.getdata(self.cubename, ext=1) * self.flam_unit
+
+    def get_flamerr(self):
+        return fits.getdata(self.cubename, ext=2) * self.flam_unit
+
+    def get_fnu(self):
+        flam = self.get_flam()
+        fnu = (flam / const.c * self.wave**2).to(self.fnu_unit)
+        return fnu
+
+    def get_fnuerr(self):
+        flamerr = self.get_flamerr()
+        fnuerr = (flamerr / const.c * self.wave**2).to(self.fnu_unit)
+        return fnuerr
+
+    def get_mag(self):
+        fnu = self.get_fnu().value
+        mab = -2.5 * np.log10(fnu) - 48.6
+
+    def get_magerr(self):
+        fnu = self.get_fnu().value
+        fnuerr = self.get_fnuerr().value
+        maberr = np.abs(2.5 / np.log(10) * fnuerr / fnu)
+        return maberr
