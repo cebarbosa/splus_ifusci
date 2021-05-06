@@ -68,6 +68,7 @@ class SCubeMaker():
             self.size_unit = u.pix
         self.conn = conn
         self.redo = redo
+        self.verbose = verbose
         # General definitions
         self.ps = 0.55 * u.arcsec / u.pixel
         if isinstance(self.size, u.Quantity):
@@ -105,8 +106,8 @@ class SCubeMaker():
             os.mkdir(self.cutouts_dir)
         # Producing stamps and cube
         self._s = int(self.size)
-        self.cutnames = [f"{self.obj}_{band}_{self._s}x{self._s}{self.size_unit}.fz" for
-                         band in self.bands]
+        self.cutnames = [f"{self.obj}_{band}_{self._s}x{self._s}" \
+                         f"{self.size_unit}.fz" for band in self.bands]
         self.wcutnames= [cut.replace(".fz", "_weight.fz") for cut in
                          self.cutnames]
         self.cubename = os.path.join(self.wdir, f"{self.obj}_{self._s}x{self._s}"
@@ -180,6 +181,14 @@ class SCubeMaker():
         fields = [_.replace("_", "-") for _ in self.zps["FIELD"]]
         flams, flamerrs = [], []
         headers = []
+        cuts_exist = [os.path.exists(os.path.join(self.cutouts_dir, img)) for
+                      img in self.cutnames]
+        if not all(cuts_exist):
+            if self.verbose:
+                print(f"Cutout files not found for {self.galaxy}, cube not "
+                      f"processed.")
+            return None
+
         for band, img in zip(self.bands, self.cutnames):
             wave = self.wave_eff[band] * u.Angstrom
             filename = os.path.join(self.cutouts_dir, img)
@@ -303,13 +312,13 @@ class SCubeMaker():
         flamerr = self.get_flamerr().value
         # Calculating H-alpha
         wline = 6562.8 * u.AA
-        bands = ["R", "F660", "I"]
-        condition = [b in self.bands for b in bands]
+        halpha_bands = ["R", "F660", "I"]
+        condition = [b in self.bands for b in halpha_bands]
         if not all(condition):
             print("Halpha estimation requires filters R, F660 and I!")
             return
-        halpha_estimator = SPLUSEmLine(wline, bands)
-        idx = np.array([self.bands.index(band) for band in self.bands])
+        halpha_estimator = SPLUSEmLine(wline, halpha_bands)
+        idx = np.array([self.bands.index(band) for band in halpha_bands])
         halpha, halpha_err = halpha_estimator(flam[idx], flamerr[idx])
         default_out = self.cubename.replace(".fits", "_halpha.fits")
         output = default_out if output is None else output
