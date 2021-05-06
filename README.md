@@ -1,4 +1,4 @@
-# splus_ifusci
+## Obtaining S-PLUS datacubes
 Tools for obtaining and analysing S-PLUS datacubes.
 
 ### Dependences
@@ -16,7 +16,7 @@ go the the main directory (splus_ifusci) and install with pip:
 pip install .
 ```
 ### Usage
-A simple usage of the code to produce a datacube for NGC1087
+A simple usage of the code to produce a datacube for NGC1087.
 
 ```python
 import getpass # For authentication
@@ -30,13 +30,13 @@ from splus_ifusci import SCubeMaker, make_RGB_with_overlay
 username = getpass.getuser() # Change to your S-PLUS username
 password = getpass.getpass(f"Password for {username}:")
 conn = splusdata.connect(username, password)
-
+# Specifying your object
 galaxy = 'NGC1087'
-coords = ['02:46:25.15', '-00:29:55.45']
-size = 600
-# Connect with S-PLUS
+coords = ['02:46:25.15', '-00:29:55.45'] 
+size = 600 # Assume pixels if units is not specified
+# Main routine to download the datacube.
 scube = SCubeMaker(galaxy, coords, size, conn=conn,
-                   coord_unit=(u.hourangle, u.degree), redo=False)
+                   coord_unit=(u.hourangle, u.degree))
 halpha, halpha_err = scube.calc_halpha()
 # Making RGB image
 flam = scube.get_flam().value
