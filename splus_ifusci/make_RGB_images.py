@@ -42,9 +42,6 @@ def make_RGB_with_overlay(r, g, b, output, overlay=None, bb=5):
     mean, median, stddev = sigma_clipped_stats(overlay)
     maxha = np.percentile(overlay, 99.5)
     overlay = np.clip(overlay, stddev, maxha)
-    import matplotlib.pyplot as plt
-    plt.imshow(overlay)
-    plt.show()
     overlay -= overlay.min()
     overlay = (overlay / overlay.max() * 255).astype("uint8")
     hamask = np.zeros_like(RGB)
