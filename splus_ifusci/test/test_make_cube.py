@@ -1,11 +1,9 @@
 import getpass
 
-import numpy as np
 import astropy.units as u
-import matplotlib.pyplot as plt
 
 import splusdata
-from splus_ifusci import SCubeMaker, SPLUSEmLine, make_RGB_with_overlay
+from splus_ifusci import SCubeMaker, make_RGB_with_overlay
 
 def make_cube_ngc1087(conn):
     # NGC1087
@@ -30,9 +28,9 @@ def make_cube_ngc1087(conn):
 
 
 if __name__ == "__main__":
-    # Connect with S-PLUS
-    # username = getpass.getuser() # Change to your S-PLUS username
-    # password = getpass.getpass(f"Password for {username}:")
-    # conn = splusdata.connect(username, password)
+    #Connect with S-PLUS
+    username = getpass.getuser() # Change to your S-PLUS username
+    password = getpass.getpass(f"Password for {username}:")
+    conn = splusdata.connect(username, password)
     conn = None
     make_cube_ngc1087(conn)
