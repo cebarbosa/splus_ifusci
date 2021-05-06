@@ -67,6 +67,7 @@ class SCubeMaker():
         else:
             self.size_unit = u.pix
         self.conn = conn
+        self.redo = redo
         # General definitions
         self.ps = 0.55 * u.arcsec / u.pixel
         if isinstance(self.size, u.Quantity):
@@ -135,15 +136,18 @@ class SCubeMaker():
         if self.conn is None:
             raise ValueError("A connection with S-PLUS database should be "
                              "provided for missing stamps.")
-        for imglist in [self.cutnames, self.wcutnames]:
-            for band, stamp in zip(self.bands, imglist):
-                outfile = os.path.join(self.cutouts_dir, stamp)
-                if os.path.exists(outfile):
-                    continue
-                ra = self.coords.ra.to(u.degree).value
-                dec = self.coords.dec.to(u.degree).value
+        for band, img, wimg in zip(self.bands, self.cutnames, self.wcutnames):
+            ra = self.coords.ra.to(u.degree).value
+            dec = self.coords.dec.to(u.degree).value
+            outfile = os.path.join(self.cutouts_dir, img)
+            if not os.path.exists(outfile) or self.redo:
                 hdu = self.conn.get_cut(ra, dec, self.cutsize, band)
-                hdu.writeto(outfile)
+                hdu.writeto(outfile, overwrite=True)
+            # Getting the weight images.
+            woutfile = os.path.join(self.cutouts_dir, wimg)
+            if not os.path.exists(woutfile) or self.redo:
+                hdu = self.conn.get_cut_weight(ra, dec, self.cutsize, band)
+                hdu.writeto(woutfile, overwrite=True)
 
     def get_zps(self):
         """ Load all tables with zero points for iDR3. """
