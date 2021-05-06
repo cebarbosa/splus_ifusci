@@ -13,7 +13,7 @@ import astropy.units as u
 import numpy as np
 from scipy.interpolate import interp1d
 
-class EmLine3Filters:
+class EmLine3Filters():
     def __init__(self, wave, bands, wtrans, trans):
         self.wave = wave
         self.bands = bands
@@ -24,7 +24,7 @@ class EmLine3Filters:
         self.deltax = self.calc_deltax()
         self.betax = self.calc_betax()
         self.a = (self.alphax[0] - self.alphax[2]) / \
-            (self.alphax[1] - self.alphax[2])
+                 (self.alphax[1] - self.alphax[2])
 
     def calc_wpiv(self):
         """ Numerical integration of equation (4) in VR+2015 for SPLUS
@@ -82,12 +82,13 @@ class EmLine3Filters:
     def __call__(self, flux, fluxerr=None):
         """Three filter method from VR+2015 (equation (3)). """
         numen = (flux[0] - flux[2]) - self.a * (flux[1] - flux[2])
-        denom = + self.betax[0] - self.a * self.betax[1]
+        denom = self.betax[0] - self.a * self.betax[1]
         f = numen / denom
         if fluxerr is None:
             return f
-        ferr = np.sqrt(fluxerr[0]**2 + (self.a * fluxerr[1])**2 +
-                       (fluxerr[2] * (self.a -1))**2) / denom
+        numen = np.sqrt(fluxerr[0]**2 + (self.a * fluxerr[1])**2 +
+                        ((self.a - 1) * fluxerr[2])**2)
+        ferr = numen / denom
         return f, ferr
 
     def EW(self, mag):
