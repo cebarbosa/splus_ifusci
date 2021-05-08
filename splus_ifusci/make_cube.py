@@ -209,7 +209,7 @@ class SCubeMaker():
             flam = flam.to(self.flam_unit).value
             # Uncertaintis in flux density
             weights = fits.getdata(filename.replace(".fz", "_weight.fz"), 1)
-            dataerr = 1 / weights + np.clip(data, 0, np.infty) / gain
+            dataerr = np.sqrt(1 / weights + np.clip(data, 0, np.infty) / gain)
             fnuerr = dataerr * f0 * self.fnu_unit
             flamerr = fnuerr * const.c / wave**2
             flamerr = flamerr.to(self.flam_unit).value
