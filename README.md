@@ -40,6 +40,8 @@ size = 600 # Assume pixels if units is not specified
 # Main routine to download the datacube.
 scube = SCubeMaker(galaxy, coords, size, conn=conn,
                    coord_unit=(u.hourangle, u.degree))
+scube.download_stamps()
+scube.make_cube()
 halpha, halpha_err = scube.calc_halpha()
 # Making RGB image
 flam = scube.get_flam().value

@@ -12,7 +12,9 @@ def make_cube_ngc1087(conn):
     size = 600
     # Connect with S-PLUS
     scube = SCubeMaker(galaxy, coords, size, conn=conn,
-                       coord_unit=(u.hourangle, u.degree), redo=)
+                       coord_unit=(u.hourangle, u.degree))
+    scube.download_stamps(redo=True)
+    scube.make_cube(redo=True)
     halpha, halpha_err = scube.calc_halpha()
     # Making RGB image
     flam = scube.get_flam().value

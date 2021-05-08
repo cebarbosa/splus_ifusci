@@ -2,7 +2,6 @@ import os
 import warnings
 
 import numpy as np
-import pandas as pd
 import astropy.units as u
 import astropy.constants as const
 from astropy.wcs import WCS
@@ -11,7 +10,7 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from astropy.table import Table, vstack
 from scipy.interpolate import RectBivariateSpline
-
+from tqdm import tqdm
 from .emlines_estimator import SPLUSEmLine
 from .make_RGB_images import make_RGB_with_overlay
 
@@ -19,39 +18,40 @@ warnings.simplefilter('ignore', category=AstropyWarning)
 np.seterr(divide='ignore', invalid='ignore')
 
 class SCubeMaker():
-    def __init__(self, obj, coords, size, conn=None, wdir=None, zpref=None,
-                 redo=False, bands=None, verbose=True, coord_unit=None,
-                 cut_dir=None):
-        """ Produces S-PLUS data cubes directly from the project's database.
+    """ Produces S-PLUS data cubes directly from the project's database.
 
-        Prameters
-        ---------
-        obj: str
-            Identification of the object
-        coords: astropy.coordinates.SkyCoord or list
-            Coordinates of the object. If list is given, it assumes units in
-            degrees for both coordinates.
-        size: astropy.Quantity or flot
-            Size of the cube.
-        conn: splusdata.conn
-            Connection with S-PLUS data base using splusdata
-        wdir: str
-            Working directory
-        zpref: str
-            Calibration reference. Options are idr3_n4 (latest calibration,
-            default) and idr3
-        redo: bool
-            Produces cube again even if it already existis in the disk.
-            Default is False.
-        bands: list
-            Names of the filters to be included in the cube. Options include
-            'U', 'F378', 'F395', 'F410', 'F430', 'G', 'F515', 'R', 'F660', 'I',
-            'F861', and 'Z'. Defalt is all bands.
-        coord_unit: astropy.unit
-            Units to be used in coordinates. Default is degree
-        cut_dir: str
-            Path to location where cutouts are stored.
-        """
+    Parameters
+    ----------
+    obj: str
+        Identification of the object
+    coords: astropy.coordinates.SkyCoord or list
+        Coordinates of the object. If list is given, it assumes units in
+        degrees for both coordinates.
+    size: astropy.Quantity or flot
+        Size of the cube.
+    conn: splusdata.conn
+        Connection with S-PLUS data base using splusdata
+    wdir: str
+        Working directory
+    zpref: str
+        Calibration reference. Options are idr3_n4 (latest calibration,
+        default) and idr3
+    redo: bool
+        Produces cube again even if it already existis in the disk.
+        Default is False.
+    bands: list
+        Names of the filters to be included in the cube. Options include
+        'U', 'F378', 'F395', 'F410', 'F430', 'G', 'F515', 'R', 'F660', 'I',
+        'F861', and 'Z'. Defalt is all bands.
+    coord_unit: astropy.unit
+        Units to be used in coordinates. Default is degree
+    cut_dir: str
+        Path to location where cutouts are stored.
+    """
+    def __init__(self, obj, coords, size, conn=None, wdir=None, zpref=None,
+                 bands=None, verbose=True, coord_unit=None,
+                 cut_dir=None):
+
         self.obj = obj
         self.coord_unit = u.degree if coord_unit is None else coord_unit
         if isinstance(coords, SkyCoord):
@@ -67,7 +67,6 @@ class SCubeMaker():
         else:
             self.size_unit = u.pix
         self.conn = conn
-        self.redo = redo
         self.verbose = verbose
         # General definitions
         self.ps = 0.55 * u.arcsec / u.pixel
@@ -112,41 +111,38 @@ class SCubeMaker():
                          self.cutnames]
         self.cubename = os.path.join(self.wdir, f"{self.obj}_{self._s}x{self._s}"
                                                 f"{self.size_unit}.fits")
-        status = self.check_infoot()
-        if os.path.exists(self.cubename) and not redo:
-            return
-        if not status:
-            if verbose:
-                print(f"Data not available for {self.obj}, cube will not be " \
-                      f"processed.")
-            return
-        self.download_stamps()
-        self.make_cube()
 
-    def check_infoot(self):
-        """ Check if proposed objects are found in the S-PLUS footprint. """
+
+    def get_status(self):
+        """ Check if proposed objects are found in the S-PLUS DB. """
+        if self.conn is None:
+            return 0, "Connection with SPLUS DB not provided."
         ra = self.coords.ra.to(u.degree).value
         dec = self.coords.dec.to(u.degree).value
         try:
-            self.conn.get_cut(ra, dec, self.cutsize, self.bands[0])
-            return 1
+            self.conn.get_cut(ra, dec, 5, self.bands[0])
+            return 1, None
         except:
-            return 0
+            return 0, "Region not available in S-PLUS database."
 
-    def download_stamps(self):
-        if self.conn is None:
-            raise ValueError("A connection with S-PLUS database should be "
-                             "provided for missing stamps.")
-        for band, img, wimg in zip(self.bands, self.cutnames, self.wcutnames):
+    def download_stamps(self, redo=False):
+        status, msg = self.get_status()
+        if not status:
+            print(msg)
+            return
+        desc = "Downloading stamps"
+        N = len(self.bands)
+        for band, img, wimg in tqdm(zip(self.bands, self.cutnames,
+                                      self.wcutnames), desc=desc, total=N):
             ra = self.coords.ra.to(u.degree).value
             dec = self.coords.dec.to(u.degree).value
             outfile = os.path.join(self.cutouts_dir, img)
-            if not os.path.exists(outfile) or self.redo:
+            if not os.path.exists(outfile) or redo:
                 hdu = self.conn.get_cut(ra, dec, self.cutsize, band)
                 hdu.writeto(outfile, overwrite=True)
             # Getting the weight images.
             woutfile = os.path.join(self.cutouts_dir, wimg)
-            if not os.path.exists(woutfile) or self.redo:
+            if not os.path.exists(woutfile) or redo:
                 hdu = self.conn.get_cut_weight(ra, dec, self.cutsize, band)
                 hdu.writeto(woutfile, overwrite=True)
 
@@ -177,18 +173,17 @@ class SCubeMaker():
             zpcorr[band] = RectBivariateSpline(xgrid, xgrid, corr)
         return zpcorr
 
-    def make_cube(self):
-        fields = [_.replace("_", "-") for _ in self.zps["FIELD"]]
-        flams, flamerrs = [], []
-        headers = []
+    def make_cube(self, redo=False):
+        if os.path.exists(self.cubename) and not redo:
+            return
         cuts_exist = [os.path.exists(os.path.join(self.cutouts_dir, img)) for
                       img in self.cutnames]
         if not all(cuts_exist):
-            if self.verbose:
-                print(f"Cutout files not found for {self.galaxy}, cube not "
-                      f"processed.")
-            return None
-
+            print("Not all stamps are available locally, cube not produced.")
+            return
+        fields = [_.replace("_", "-") for _ in self.zps["FIELD"]]
+        flams, flamerrs = [], []
+        headers = []
         for band, img in zip(self.bands, self.cutnames):
             wave = self.wave_eff[band] * u.Angstrom
             filename = os.path.join(self.cutouts_dir, img)
@@ -209,7 +204,7 @@ class SCubeMaker():
             flam = flam.to(self.flam_unit).value
             # Uncertaintis in flux density
             weights = fits.getdata(filename.replace(".fz", "_weight.fz"), 1)
-            dataerr = np.sqrt(1 / weights + np.clip(data, 0, np.infty) / gain)
+            dataerr = np.sqrt(1 / weights + data / gain)
             fnuerr = dataerr * f0 * self.fnu_unit
             flamerr = fnuerr * const.c / wave**2
             flamerr = flamerr.to(self.flam_unit).value
@@ -234,7 +229,7 @@ class SCubeMaker():
         tab.append(self.bands)
         tab.append([self.wave_eff[band] for band in self.bands])
         names = ["FILTER", "WAVE_EFF"]
-        hfields = ["GAIN", "PSFFWHM", "DATE-OBS", "EXPTIME",
+        hfields = ["OBJECT", "GAIN", "PSFFWHM", "DATE-OBS", "EXPTIME",
                    "EFECTIME", "NCOMBINE", "HIERARCH OAJ PRO FWHMMEAN"]
         for f in hfields:
             if not all([f in h for h in headers]):
@@ -245,7 +240,7 @@ class SCubeMaker():
                 del newheader[f]
         tab = Table(tab, names=names)
         tab.rename_column("HIERARCH OAJ PRO FWHMMEAN", "PSFFWHM")
-
+        tab.rename_column("OBJECT", "TILE")
         # Producing data cubes HDUs.
         hdus = [fits.PrimaryHDU()]
         hdu1 = fits.ImageHDU(flam, newheader)
