@@ -4,7 +4,7 @@ Tools for obtaining and analysing S-PLUS datacubes.
 *Note:* This is work in progress! If you intend to use this package 
 in your research, please send me a message at kadu.barbosa@gmail.com
 
-### Dependences
+### Dependencies
 This code is pure Python, and requires regular scientific libraries 
 including numpy, scipy, astropy and pandas. It also depends on the
 [splusdata](https://github.com/Schwarzam/splusdata) to download the data 
