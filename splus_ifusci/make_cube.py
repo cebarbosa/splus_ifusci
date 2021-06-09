@@ -14,10 +14,12 @@ from tqdm import tqdm
 from .emlines_estimator import SPLUSEmLine
 from .make_RGB_images import make_RGB_with_overlay
 
+from splusdata.features.filterbw import filter_bw
+
 warnings.simplefilter('ignore', category=AstropyWarning)
 np.seterr(divide='ignore', invalid='ignore')
 
-class SCubeMaker():
+class SCube():
     """ Produces S-PLUS data cubes directly from the project's database.
 
     Parameters
@@ -125,7 +127,7 @@ class SCubeMaker():
         except:
             return 0, "Region not available in S-PLUS database."
 
-    def download_stamps(self, redo=False):
+    def download_stamps(self, redo=False, filterbw=False):
         status, msg = self.get_status()
         if not status:
             print(msg)
@@ -139,6 +141,8 @@ class SCubeMaker():
             outfile = os.path.join(self.cutouts_dir, img)
             if not os.path.exists(outfile) or redo:
                 hdu = self.conn.get_cut(ra, dec, self.cutsize, band)
+                if filterbw:
+                    hdu = filter_bw(hdu)
                 hdu.writeto(outfile, overwrite=True)
             # Getting the weight images.
             woutfile = os.path.join(self.cutouts_dir, wimg)

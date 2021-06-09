@@ -22,24 +22,24 @@ pip install .
 A simple usage of the code to produce a datacube for NGC1087.
 
 ```python
-import getpass # For authentication
+import getpass  # For authentication
 
 import astropy.units as u
 
-import splusdata # To access the S-PLUS database
-from splus_ifusci import SCubeMaker, make_RGB_with_overlay
+import splusdata  # To access the S-PLUS database
+from splus_ifusci import SCube, make_RGB_with_overlay
 
-#Connect with S-PLUS
-username = getpass.getuser() # Change to your S-PLUS username
+# Connect with S-PLUS
+username = getpass.getuser()  # Change to your S-PLUS username
 password = getpass.getpass(f"Password for {username}:")
 conn = splusdata.connect(username, password)
 # Specifying your object
 galaxy = 'NGC1087'
-coords = ['02:46:25.15', '-00:29:55.45'] 
-size = 600 # Assume pixels if units is not specified
+coords = ['02:46:25.15', '-00:29:55.45']
+size = 600  # Assume pixels if units is not specified
 # Main routine to download the datacube.
-scube = SCubeMaker(galaxy, coords, size, conn=conn,
-                   coord_unit=(u.hourangle, u.degree))
+scube = SCube(galaxy, coords, size, conn=conn,
+              coord_unit=(u.hourangle, u.degree))
 scube.download_stamps()
 scube.make_cube()
 halpha, halpha_err = scube.calc_halpha()
