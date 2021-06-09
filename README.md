@@ -9,13 +9,20 @@ This code is pure Python, and requires regular scientific libraries
 including numpy, scipy, astropy and pandas. It also depends on the
 [splusdata](https://github.com/Schwarzam/splusdata) to download the data 
 and also requires that the user is properly registered in the 
-[splus cloud website](https://splus.cloud/)
+[splus cloud website](https://splus.cloud/). 
+
+*WARNING: the photometric calibration of the produced data cubes rely 
+on recent version versions of the splusdata package (v>3.7). Please update 
+your package if necessary!* 
+
+
 
 ### Installation
 Download and content of this package to your computer, unpack the content,
 go the the main directory (splus_ifusci) and install with pip:
 
 ```bash
+cd splus_ifusci
 pip install .
 ```
 ### Usage
