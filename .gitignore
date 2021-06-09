@@ -131,6 +131,9 @@ dmypy.json
 # Pycharm
 .idea
 
+tests/*.jpg
+tests/*.fits
+
 splus_ifusci/test/credentials.py
 
 # Credentials from user
