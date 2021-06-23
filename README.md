@@ -5,8 +5,9 @@ Tools for obtaining and analysing S-PLUS datacubes.
 in your research, please send me a message at kadu.barbosa@gmail.com
 
 ### Dependencies
-This code is pure Python, and requires regular scientific libraries 
-including numpy, scipy, astropy and pandas. It also depends on the
+This code is pure Python, and requires the libraries numpy, scipy, 
+astropy, pandas, and [opencv-python](https://pypi.org/project/opencv-python/) to make colored 
+images. It also depends on the
 [splusdata](https://github.com/Schwarzam/splusdata) to download the data 
 and also requires that the user is properly registered in the 
 [splus cloud website](https://splus.cloud/). 
