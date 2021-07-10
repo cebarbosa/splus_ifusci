@@ -278,14 +278,16 @@ class SCube():
         if not os.path.exists(self.cubename):
             return None
         flam = self.get_flam()
-        fnu = (flam / const.c * self.wave**2).to(self.fnu_unit)
+        fnu = (flam / const.c * self.wave[:, None, None]**2).to(
+               self.fnu_unit)
         return fnu
 
     def get_fnuerr(self):
         if not os.path.exists(self.cubename):
             return None
         flamerr = self.get_flamerr()
-        fnuerr = (flamerr / const.c * self.wave**2).to(self.fnu_unit)
+        fnuerr = (flamerr / const.c * self.wave[:, None, None]**2).to(
+                  self.fnu_unit)
         return fnuerr
 
     def get_mag(self):
@@ -307,8 +309,8 @@ class SCube():
         """ Returns the HAlpha """
         if not os.path.exists(self.cubename):
             return None
-        flam = self.get_flam().value
-        flamerr = self.get_flamerr().value
+        flam = self.get_flam()
+        flamerr = self.get_flamerr()
         # Calculating H-alpha
         wline = 6562.8 * u.AA
         halpha_bands = ["R", "F660", "I"]
