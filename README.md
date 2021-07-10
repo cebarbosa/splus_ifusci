@@ -61,6 +61,3 @@ make_RGB_with_overlay(*rgb, outimg, overlay=halpha.value)
 Below is the resulting image.
 
 ![NGC1087](./splus_ifusci/test/NGC1087_RGB.png)
-
-### Planned features
-1. Including filtering options for datacubes.
